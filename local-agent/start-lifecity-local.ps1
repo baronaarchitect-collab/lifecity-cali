@@ -17,12 +17,15 @@ function Running($port) {
 }
 
 # --- Detector PointNet++ (:8068) ------------------------------------------
-$detDir = Join-Path $AppDir 'detector'
-if ((Test-Path $detDir) -and -not (Running 8068)) {
-  # Se espera detector\server.py con app FastAPI (repo 68). Bind a loopback.
+# El entrypoint FastAPI del repo 68 vive en detector\webapp\server.py (app=app).
+# server.py se auto-inyecta su ROOT (=detector\) al sys.path, así que basta con
+# arrancar uvicorn 'server:app' con WorkingDirectory en detector\webapp.
+$detDir    = Join-Path $AppDir 'detector'
+$detWebapp = Join-Path $detDir 'webapp'
+if ((Test-Path $detWebapp) -and -not (Running 8068)) {
   Start-Process -WindowStyle Hidden -FilePath $Venv `
     -ArgumentList "-m","uvicorn","server:app","--host","127.0.0.1","--port","8068" `
-    -WorkingDirectory $detDir `
+    -WorkingDirectory $detWebapp `
     -RedirectStandardOutput (Join-Path $Logs 'detector.out.log') `
     -RedirectStandardError  (Join-Path $Logs 'detector.err.log')
 }

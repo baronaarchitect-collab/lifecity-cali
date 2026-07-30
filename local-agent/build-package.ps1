@@ -49,6 +49,23 @@ if (Test-Path $DetectorSrc) {
   Say "AVISO: no existe $DetectorSrc. El zip irá SIN detector; ajusta \$DetectorSrc." 'Red'
 }
 
+# --- Saneo de seguridad: quita secretos y basura en CUALQUIER nivel ---------
+# Copy-Item -Recurse arrastra .env, .claude, __pycache__ anidados, etc. Los
+# eliminamos aquí para NO distribuir credenciales (NVIDIA_API_KEY, R2, tokens).
+Say "Saneando (quitando secretos/basura)..." 'Yellow'
+$dropDirs  = @('__pycache__','.git','.github','.claude','.venv','venv','env','node_modules','.ipynb_checkpoints','data')
+$dropFiles = @('.env','keys.bat','.env.local','secrets.json','settings.local.json')
+Get-ChildItem $Pkg -Recurse -Force -Directory |
+  Where-Object { $dropDirs -contains $_.Name } |
+  ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+Get-ChildItem $Pkg -Recurse -Force -File |
+  Where-Object { $dropFiles -contains $_.Name -or $_.Name -like '*.log' -or $_.Name -like '*.pyc' -or $_.Extension -in '.key','.pem','.pfx' } |
+  ForEach-Object { Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue }
+# Verificación dura: aborta si algún .env sobrevive.
+$leak = Get-ChildItem $Pkg -Recurse -Force -File | Where-Object { $_.Name -eq '.env' }
+if ($leak) { Say "ERROR: quedó un .env en el paquete ($($leak.FullName)). Abortando." 'Red'; exit 1 }
+Say "Saneo OK (sin .env ni secretos)." 'Green'
+
 # --- Comprimir --------------------------------------------------------------
 Say "Comprimiendo -> $Zip" 'Yellow'
 if (Test-Path $Zip) { Remove-Item $Zip -Force }

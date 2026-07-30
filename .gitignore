@@ -20,3 +20,6 @@ ai/__pycache__/
 # Claves locales (no publicar)
 ai/keys.bat
 
+# Paquete del agente local (build artifact; se genera con build-package.ps1)
+local-agent/LifeCity-Local.zip
+
