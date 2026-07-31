@@ -30,7 +30,7 @@ services:
         value: "3.11"
       # CORS: dominios permitidos (coma-separados). '*' = cualquiera.
       - key: LIFECITY_CORS
-        value: "https://app.lifecity.com.co,http://localhost:8123,http://localhost:8000"
+        value: "https://app.lifecity.com.co,https://baronaarchitect-collab.github.io,http://localhost:8123,http://localhost:8000"
       # --- Secretos: pégalos en el panel de Render (sync:false = no en git) ---
       - key: NVIDIA_API_KEY
         sync: false

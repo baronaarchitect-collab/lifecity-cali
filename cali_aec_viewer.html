@@ -170,6 +170,19 @@
   .pot-sep { height: 1px; background: var(--line); margin: 2px 0; }
   .predio .actions { display: flex; gap: 6px; margin-top: 4px; }
   .predio .actions .btn { padding: 7px 8px; font-size: 10px; justify-content: center; }
+  /* Menú de acciones (lote o edificio) */
+  .tool-menu { display: grid; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .tool-menu .btn { justify-content: flex-start; font-size: 11px; }
+  .badge-kind { display:inline-block; font-size:9px; letter-spacing:.5px; text-transform:uppercase; padding:2px 6px; border-radius:6px; margin-bottom:6px; }
+  .badge-kind.lot { background:rgba(111,179,255,.18); color:#6fb3ff; }
+  .badge-kind.bld { background:rgba(77,208,225,.18); color:#4dd0e1; }
+  /* Overlay de herramientas embebidas */
+  #lc-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(8,11,18,.92); display: none; flex-direction: column; }
+  #lc-overlay .bar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--panel, #10151f); border-bottom: 1px solid var(--border, #2a3140); }
+  #lc-overlay .bar .ttl { font-size: 13px; font-weight: 600; color: var(--text, #e6ecf5); flex: 1; }
+  #lc-overlay .bar .x { cursor: pointer; border: 1px solid var(--border,#2a3140); background: transparent; color: var(--text,#e6ecf5); border-radius: 8px; padding: 6px 12px; font-size: 12px; }
+  #lc-overlay .bar .x:hover { background: rgba(255,255,255,.06); }
+  #lc-frame { flex: 1; width: 100%; border: 0; background: #0b0e14; }
 
   .project-card {
     background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--accent);
@@ -301,9 +314,9 @@
       <h2><span>Desarrollar propiedad</span><span class="dot"></span></h2>
       <div class="hint">Selecciona una propiedad en el panel derecho y ánclale datos:</div>
       <label class="btn cyan" for="file-ifc"><span class="ic">▣</span> Cargar modelo IFC</label>
-      <input type="file" id="file-ifc" accept=".ifc">
+      <input type="file" id="file-ifc" accept=".ifc,.glb,.gltf">
       <label class="btn" for="file-pcd"><span class="ic">⋮⋮</span> Cargar nube de puntos</label>
-      <input type="file" id="file-pcd" accept=".xyz,.pts,.txt,.csv,.asc,.pcd">
+      <input type="file" id="file-pcd" accept=".xyz,.pts,.txt,.csv,.asc,.pcd,.ply">
       <div class="hint">Nube: XYZ / PTS / CSV (X Y Z [R G B]). Se centra sobre el predio.</div>
       <label class="btn" for="file-topo"><span class="ic">▲</span> Topografía Civil 3D</label>
       <input type="file" id="file-topo" accept=".xml,.dxf,.txt,.csv">
@@ -333,15 +346,6 @@
       </div>
       <button class="btn primary" id="osm-publish"><span class="ic">▲</span> Publicar propiedades guardadas</button>
       <div class="hint" id="osm-status">No conectado. Publica las huellas de tus propiedades guardadas como edificios (building=yes). En producción, solo edificios que existan en la realidad.</div>
-    </div>
-
-    <!-- ===== FASES DEL PROYECTO ===== -->
-    <div class="section">
-      <h2><span>Fases del proyecto</span><span class="dot" style="background:#6bd96b"></span></h2>
-      <button class="btn" id="btn-fase-decenal" style="border-color:#f4b942"><span class="ic">🛡</span> Cotizador Decenal</button>
-      <button class="btn" id="btn-fase-detalle" style="border-color:#4dd0e1"><span class="ic">📐</span> Diseño a detalle (muros + instalaciones)</button>
-      <button class="btn" id="btn-fase-fm" style="border-color:#6bd96b"><span class="ic">🏠</span> Facility Management</button>
-      <div class="hint">Cada fase importa la geometría del editor de masas (lote + masas + niveles).</div>
     </div>
 
     <div class="section">
@@ -618,11 +622,22 @@ async function loadOSMBuildings() {
       for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].x, -pts[i].z);
       const levels = parseInt(tags['building:levels']) || 3;
       const height = parseFloat(tags.height) || levels * 3;
+      // huella (m²) por shoelace sobre coordenadas locales (ya en metros)
+      let a2 = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) a2 += (pts[j].x * pts[i].z - pts[i].x * pts[j].z);
+      const footprint = Math.abs(a2 / 2);
+      const bring = el.geometry.map(p => [p.lon, p.lat]);
+      const binfo = {
+        name: tags.name || tags['addr:housename'] || null,
+        addr: [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ') || null,
+        levels, height: Math.round(height), footprint: Math.round(footprint),
+        built: Math.round(footprint * levels), use: tags.building, ring: bring, centroid: polyCentroid(bring),
+      };
       try {
         const geom = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
         geom.rotateX(-Math.PI / 2); // shape(x,-z)->world(x, h, z)
         const mat = new THREE.MeshStandardMaterial({ color: 0x2a3140, roughness: 0.85, metalness: 0.1, transparent: true, opacity: 0.82 });
         const mesh = new THREE.Mesh(geom, mat);
+        mesh.userData = { type: 'building', b: binfo };
         gOSM.add(mesh);
         const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geom), new THREE.LineBasicMaterial({ color: 0x3a4558, transparent: true, opacity: 0.3 }));
         gOSM.add(edges);
@@ -884,7 +899,7 @@ function showPredioInfo(props, centroid) {
         <button class="btn primary" id="btn-save-predio"><span class="ic">★</span> Guardar</button>
         <button class="btn" id="btn-fly-predio"><span class="ic">◎</span> Centrar</button>
       </div>
-      <button class="btn cyan" id="btn-masas"><span class="ic">◱</span> Diseñar masas →</button>
+      ${actionsHTML()}
     </div>`;
   $('btn-save-predio').onclick = () => savePredioAsProperty(props, centroid);
   $('btn-fly-predio').onclick = () => {
@@ -892,8 +907,52 @@ function showPredioInfo(props, centroid) {
     controls.target.set(l.x, 0, l.z);
     camera.position.set(l.x + 250, 220, l.z + 250);
   };
-  $('btn-masas').onclick = () => openMassing(props, centroid);
+  wireActions(el, { kind:'lot', props, centroid,
+    ring: state.selectedParcel ? state.selectedParcel.ring : null,
+    area: props.shape_area ? Math.round(props.shape_area) : 0,
+    icb: state.selectedParcel ? state.selectedParcel.icb : null,
+    ica: state.selectedParcel ? state.selectedParcel.ica : null });
   fetchPOT(centroid, props.shape_area ? Math.round(props.shape_area) : 0);
+}
+
+// Panel al TOCAR UN EDIFICIO: nombre, altura, m² construidos, huella + menú de acciones.
+// Enriquece de forma asíncrona con el lote catastral que lo contiene (para obra nueva/cotizar).
+function showBuildingInfo(b){
+  const el = $('predio-info'); const c = b.centroid;
+  el.innerHTML = `
+    <div class="predio">
+      <span class="badge-kind bld">Edificio</span>
+      <div class="npn">${b.name || b.addr || 'Edificación sin nombre'}</div>
+      <div class="kv">
+        <span class="k">Uso</span><span class="val">${b.use && b.use !== 'yes' ? b.use : 'Edificación'}</span>
+        <span class="k">Pisos</span><span class="val">${b.levels}</span>
+        <span class="k">Altura</span><span class="val">${b.height} m</span>
+        <span class="k">Huella</span><span class="val">${b.footprint.toLocaleString()} m²</span>
+        <span class="k">M² constr.</span><span class="val">${b.built.toLocaleString()} m²</span>
+        <span class="k">Lat/Lon</span><span class="val">${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}</span>
+      </div>
+      <div id="bld-lote" class="hint">Buscando el lote catastral…</div>
+      ${actionsHTML()}
+    </div>`;
+  const ctx = { kind:'building', props:{ direpred: b.name || b.addr || '' }, name: b.name || b.addr || '',
+                centroid: c, ring: b.ring, area: b.footprint };
+  wireActions(el, ctx);
+  const l = latLonToLocal(c.lat, c.lon);
+  controls.target.set(l.x, 0, l.z);
+  parcelAt(c).then(par => {
+    const box = $('bld-lote'); if(!box) return;
+    if(!par){ box.textContent = 'Sin lote catastral IDESC en este punto.'; return; }
+    const pr = par.props;
+    box.innerHTML = `<div class="kv" style="margin-top:2px">
+      <span class="k">Lote NPN</span><span class="val">${pr.npn || '—'}</span>
+      <span class="k">Dirección</span><span class="val">${pr.direpred || '—'}</span>
+      <span class="k">Barrio</span><span class="val">${pr.nom_barrio || '—'}</span>
+      <span class="k">Área lote</span><span class="val">${pr.shape_area ? Math.round(pr.shape_area).toLocaleString() + ' m²' : '—'}</span></div>`;
+    // La obra nueva / cotización operan sobre el LOTE (no la huella existente)
+    ctx.props = pr; ctx.ring = par.ring; ctx.centroid = par.centroid;
+    ctx.area = pr.shape_area ? Math.round(pr.shape_area) : b.footprint; ctx.kind = 'building-on-lot';
+    state.selectedParcel = { props: pr, centroid: par.centroid, ring: par.ring };
+  });
 }
 
 // ===================== ESTUDIOS DE MASAS (dashboard) =====================
@@ -922,7 +981,7 @@ function openStudy(k) {
   const s = readStudies()[k]; if (!s || !s.predio) { toast('Estudio sin geometría de predio', 'err'); return; }
   const payload = Object.assign({}, s.predio, { study: { levels: s.levels, walls: s.walls, masses: s.masses } });
   try { localStorage.setItem('cali_massing_handoff', JSON.stringify(payload)); } catch (e) {}
-  window.open('bim/masas.html', '_blank'); // editor fusionado: sliders + IA + frente/antejardín + interiores
+  openTool('bim/masas.html', 'Editor de masas · ' + (s.predio.direpred || s.predio.npn || 'estudio'));
 }
 
 // Abre la página de masas con la geometría del terreno + normativa (handoff por localStorage)
@@ -937,7 +996,7 @@ function openMassing(props, centroid) {
     centroid, ring,
   };
   try { localStorage.setItem('cali_massing_handoff', JSON.stringify(payload)); } catch (e) {}
-  window.open('bim/masas.html', '_blank'); // editor fusionado: sliders + IA + frente/antejardín + interiores
+  openTool('bim/masas.html', 'Editor de masas · obra nueva');
 }
 
 // ===================== PROPIEDADES (guardadas + persistencia) =====================
@@ -1092,9 +1151,34 @@ function requireSelected() {
   return p;
 }
 
+// Ancla un GLB/GLTF (modelo ya teselado) a la propiedad seleccionada.
+async function loadGLTF(file, prj) {
+  showLoading('CARGANDO MODELO...');
+  try {
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const url = URL.createObjectURL(file);
+    new GLTFLoader().load(url, (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      model.position.sub(center);
+      model.position.x += prj.x; model.position.z += prj.z; model.position.y += size.y / 2;
+      model.userData.ownerId = prj.id;
+      gIFC.add(model);
+      state.ifcCount++; prj.ifc = true;
+      hideLoading(); refreshMetrics(); refreshProjectList(); updateObjCount();
+      toast('Modelo anclado a: ' + prj.name, 'ok');
+      URL.revokeObjectURL(url);
+    }, (xhr) => { if (xhr.total) showLoading(`Modelo: ${Math.round(xhr.loaded / xhr.total * 100)}%`); },
+       (err) => { hideLoading(); console.error(err); placeholderIFC(prj); toast('Error modelo: placeholder colocado', 'err'); });
+  } catch (e) { hideLoading(); console.error(e); placeholderIFC(prj); toast('Motor glTF no disponible: placeholder colocado', 'err'); }
+}
+
 async function loadIFC(file) {
   const prj = requireSelected();
   if (!prj) return;
+  if (/\.(glb|gltf)$/i.test(file.name)) return loadGLTF(file, prj);
   showLoading('CARGANDO IFC...');
   const loader = await ensureIFCLoader();
   if (!loader) { hideLoading(); placeholderIFC(prj); toast('Motor IFC no disponible: placeholder colocado', 'err'); return; }
@@ -1127,9 +1211,35 @@ function placeholderIFC(prj) {
 }
 
 // ===================== NUBE DE PUNTOS (por propiedad) =====================
+// PLY (lo que exporta repo 68): binario o ASCII, se parsea con PLYLoader y se ancla al predio.
+async function loadPLY(file, prj) {
+  showLoading('PROCESANDO NUBE (.PLY)...');
+  try {
+    const { PLYLoader } = await import('three/addons/loaders/PLYLoader.js');
+    const geom = new PLYLoader().parse(await file.arrayBuffer());
+    geom.computeBoundingBox();
+    const c = geom.boundingBox.getCenter(new THREE.Vector3());
+    const sz = geom.boundingBox.getSize(new THREE.Vector3());
+    geom.translate(-c.x, -c.y, -c.z);
+    if (!geom.getAttribute('color')) {
+      const pos = geom.getAttribute('position'), col = [], minY = -sz.y / 2, range = sz.y || 1;
+      for (let i = 0; i < pos.count; i++) { const t = (pos.getY(i) - minY) / range; col.push(0.35 + t * 0.4, 0.7 + t * 0.2, 0.4 + t * 0.1); }
+      geom.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    }
+    const cloud = new THREE.Points(geom, new THREE.PointsMaterial({ size: 2, vertexColors: true, sizeAttenuation: true }));
+    cloud.position.set(prj.x, sz.y / 2, prj.z);
+    cloud.userData.ownerId = prj.id;
+    gPCD.add(cloud);
+    state.pcdCount++; prj.pcd = true;
+    hideLoading(); refreshMetrics(); refreshProjectList(); updateObjCount();
+    toast(`${geom.getAttribute('position').count.toLocaleString()} puntos (.ply) anclados a: ${prj.name}`, 'ok');
+  } catch (e) { hideLoading(); console.error(e); toast('No se pudo leer el .PLY', 'err'); }
+}
+
 function loadPointCloud(file) {
   const prj = requireSelected();
   if (!prj) return;
+  if (/\.ply$/i.test(file.name)) return loadPLY(file, prj);
   showLoading('PROCESANDO NUBE DE PUNTOS...');
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -1341,11 +1451,13 @@ canvas.addEventListener('click', (e) => {
   // Fotos de Telegram
   const photoHits = raycaster.intersectObjects(gPhotos.children, false);
   for (const hit of photoHits) if (hit.object.userData.type === 'photo') { const p = hit.object.userData.photo; toast(`📷 ${p.caption || 'Foto'} · ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`, ''); window.open(p.url, '_blank'); return; }
-  // Luego parcels
-  const parcelMeshes = [];
-  gParcels.traverse(o => { if (o.userData && o.userData.type === 'parcel') parcelMeshes.push(o); });
-  const hits = raycaster.intersectObjects(parcelMeshes, false);
-  if (hits.length) selectParcelById(hits[0].object.userData.id);
+  // Edificio o lote: gana el más cercano al cursor (el edificio extruido suele quedar arriba)
+  const bMeshes = []; gOSM.traverse(o => { if (o.userData && o.userData.type === 'building') bMeshes.push(o); });
+  const pMeshes = []; gParcels.traverse(o => { if (o.userData && o.userData.type === 'parcel') pMeshes.push(o); });
+  const bHit = raycaster.intersectObjects(bMeshes, false)[0] || null;
+  const pHit = raycaster.intersectObjects(pMeshes, false)[0] || null;
+  if (bHit && (!pHit || bHit.distance <= pHit.distance)) { showBuildingInfo(bHit.object.userData.b); return; }
+  if (pHit) { selectParcelById(pHit.object.userData.id); return; }
 });
 canvas.addEventListener('mousemove', (e) => {
   setMouse(e); raycaster.setFromCamera(mouse, camera);
@@ -1486,11 +1598,83 @@ $('btn-plan').onclick = async () => {
   catch (e) { toast('Licencia: ' + e.message, 'err'); }
 };
 // OSM: al volver del OAuth por redirección (?code=) el cliente ya canjeó el token
-// Fases del proyecto (importan la geometria del editor por handoff)
+// ===================== HERRAMIENTAS DESDE EL VISOR (todo embebido) =====================
+// Al tocar un LOTE o un EDIFICIO, el panel derecho ofrece todas las acciones. Se abren
+// EMBEBIDAS en un overlay <iframe> (mismo origen => comparten localStorage): lo que se
+// guarda en masas/FM/cotizador "queda en municipal" (al cerrar refrescamos el dashboard).
 function faseHandoff(f){ let h={}; try{h=JSON.parse(localStorage.getItem('cali_massing_handoff')||'{}');}catch(e){} h.fase=f; localStorage.setItem('cali_massing_handoff',JSON.stringify(h)); }
-$('btn-fase-decenal').onclick=()=>{ try{ const h=JSON.parse(localStorage.getItem('cali_massing_handoff')||'{}'); if(h&&(h.study||h.ring)) localStorage.setItem('cotizador_handoff',JSON.stringify(h)); }catch(e){} window.open('cotizador/webapp/cotizador.html?vista=decenal&t='+Date.now(),'_blank'); };
-$('btn-fase-detalle').onclick=()=>{ faseHandoff('detalle'); window.open('bim/masas.html','_blank'); };
-$('btn-fase-fm').onclick=()=>{ faseHandoff('fm'); window.open('bim/masas.html','_blank'); };
+
+// Handoff del predio/edificio que consumen el editor de masas y el cotizador
+function setMassingHandoff(ctx){
+  const p = ctx.props || {};
+  const payload = {
+    npn:p.npn||'', numepred:p.numepred||'', direpred:p.direpred||ctx.name||'',
+    nom_barrio:p.nom_barrio||'', comuna:p.comuna||'',
+    area: ctx.area!=null ? ctx.area : (p.shape_area?Math.round(p.shape_area):0),
+    icb: ctx.icb!=null ? ctx.icb : (state.selectedParcel?state.selectedParcel.icb:null),
+    ica: ctx.ica!=null ? ctx.ica : (state.selectedParcel?state.selectedParcel.ica:null),
+    centroid: ctx.centroid||null, ring: ctx.ring||null, kind: ctx.kind||'lot'
+  };
+  try{ localStorage.setItem('cali_massing_handoff', JSON.stringify(payload)); }catch(e){}
+}
+
+// Menú de acciones común (lote o edificio)
+function actionsHTML(){
+  return `<div class="tool-menu">
+    <button class="btn cyan" data-tool="masas"><span class="ic">◱</span> Editor de masas · obra nueva</button>
+    <button class="btn" data-tool="fm" style="border-color:#6bd96b"><span class="ic">🏠</span> Facility Management</button>
+    <button class="btn" data-tool="cotizar" style="border-color:#f4b942"><span class="ic">$</span> Cotizar · anteproyecto 4D</button>
+    <button class="btn" data-tool="pcd" style="border-color:#9c6bff"><span class="ic">☁</span> Nube de puntos (repo 68)</button>
+    <button class="btn" data-tool="model" style="border-color:#4dd0e1"><span class="ic">▣</span> Subir modelo (IFC/GLB)</button>
+  </div>`;
+}
+function wireActions(root, ctx){
+  root.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => runTool(b.dataset.tool, ctx));
+}
+function runTool(tool, ctx){
+  setMassingHandoff(ctx);
+  if(tool==='masas'){ faseHandoff('nueva'); openTool('bim/masas.html','Editor de masas · obra nueva'); }
+  else if(tool==='fm'){ faseHandoff('fm'); openTool('bim/masas.html?fase=fm','Facility Management'); }
+  else if(tool==='cotizar'){ try{ localStorage.setItem('cotizador_handoff', localStorage.getItem('cali_massing_handoff')||'{}'); }catch(e){} openTool('cotizador/webapp/cotizador.html?t='+Date.now(),'Cotizar · anteproyecto 4D'); }
+  else if(tool==='pcd'){ openRepo68(); }
+  else if(tool==='model'){ $('file-ifc').click(); }
+}
+
+// Repo 68 corre en el PC (http://127.0.0.1:8068). Desde una página https NO se puede
+// EMBEBER por mixed-content, pero sí abrir en pestaña (navegación top-level a loopback).
+// Se genera la nube ahí y luego se importa al Cali terrain layer con "Cargar nube de puntos".
+function openRepo68(){
+  const go = confirm('La herramienta de nube de puntos (repo 68) corre en tu PC.\n\n• Aceptar: abrir la herramienta (http://127.0.0.1:8068). Necesitas el complemento "LifeCity Local" instalado.\n• Cancelar: descargar/instalar el complemento (permite subir la nube o el VIDEO que la genera).');
+  if(go){ window.open('http://127.0.0.1:8068','_blank'); toast('Genera/edita la nube en la herramienta, expórtala (.ply) e impórtala aquí con “Cargar nube de puntos”.','',8000); }
+  else { openTool('descargar.html','Instalar complemento local · nube de puntos / video'); }
+}
+
+// Overlay embebido
+function openTool(url, title){
+  $('lc-overlay-title').textContent = title || 'Herramienta';
+  $('lc-frame').src = url;
+  $('lc-overlay').style.display = 'flex';
+}
+function closeTool(){
+  $('lc-overlay').style.display = 'none';
+  $('lc-frame').src = 'about:blank';
+  // lo guardado en masas/FM/cotizador ya quedó en localStorage (municipal): refrescamos
+  try{ renderStudies(); }catch(e){}
+}
+
+// Predio catastral que CONTIENE un punto (para enriquecer un edificio al tocarlo)
+async function parcelAt(centroid){
+  const d = 0.00045;
+  const cql = `BBOX(the_geom,${centroid.lon-d},${centroid.lat-d},${centroid.lon+d},${centroid.lat+d},'EPSG:4326')`;
+  try{
+    const res = await fetch(wfsGetFeatureUrl({ CQL_FILTER: cql, count: 25 }));
+    const data = await res.json();
+    const f = pickContaining(data.features || [], centroid);
+    if(!f || !f.geometry) return null;
+    const ring = f.geometry.type==='MultiPolygon' ? f.geometry.coordinates[0][0] : f.geometry.coordinates[0];
+    return { props: f.properties, ring, centroid: polyCentroid(ring) };
+  }catch(e){ return null; }
+}
 window.addEventListener('osm-connected', () => { if (typeof updateOsmStatus === 'function') updateOsmStatus(); toast('Cuenta OSM conectada ✓', 'ok'); });
 (async () => {
   if (window.LifePlatform) { try { await LifePlatform.ready; } catch (e) {}
@@ -1628,5 +1812,13 @@ $('ai-chat-send').onclick=askAI;
 $('ai-chat-in').addEventListener('keydown',e=>{ if(e.key==='Enter') askAI(); });
 window.addEventListener('focus', renderStudies);
 </script>
+<!-- Overlay de herramientas embebidas (masas / FM / cotizador / descargar) -->
+<div id="lc-overlay">
+  <div class="bar">
+    <span class="ttl" id="lc-overlay-title">Herramienta</span>
+    <button class="x" onclick="closeTool()">✕ Guardar y volver al visor</button>
+  </div>
+  <iframe id="lc-frame" src="about:blank" allow="fullscreen"></iframe>
+</div>
 </body>
 </html>
