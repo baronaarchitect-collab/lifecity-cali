@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LifeCity · Crea tu cuenta gratis</title>
+<meta name="description" content="Encuentra el lote en segundos con el predial o la dirección, mira su cabida normativa en 3D y guarda tus proyectos en la nube. Crea tu cuenta de LifeCity con Google.">
+<meta property="og:title" content="LifeCity · Del predial a la cabida en segundos">
+<meta property="og:description" content="Busca el lote, mira lo que se puede construir y guarda tus proyectos. Entra con tu cuenta de Google.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://app.lifecity.com.co/crear-cuenta/">
+<meta name="theme-color" content="#0a0d12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg-0:#0a0d12;--bg-1:#11161e;--bg-2:#1a2230;--line:#2a3548;--text:#e6ecf5;--text-dim:#8b97aa;
+    --accent:#f4b942;--accent-2:#ff5252;--accent-3:#4dd0e1;--ok:#6bd96b;--viol:#9c6bff;
+    --mono:'JetBrains Mono','SF Mono','Menlo',monospace;--display:'Space Grotesk','Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{
+    background:radial-gradient(1200px 700px at 75% -10%, #16202e 0%, var(--bg-0) 55%), var(--bg-0);
+    color:var(--text);font-family:var(--display);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent)}
+  h1,h2,h3{line-height:1.12;letter-spacing:-.02em;text-wrap:balance}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:10;background:rgba(10,13,18,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .brand .mark{width:28px;height:28px;border:2px solid var(--accent);display:grid;place-items:center;color:var(--accent);font-weight:700;transform:rotate(45deg)}
+  .brand .mark span{transform:rotate(-45deg);font-size:11px}
+  .brand b{font-size:18px;font-weight:700}.brand b i{font-style:normal;color:var(--accent)}
+  .nav-links{display:flex;align-items:center;gap:22px;font-size:14px;color:var(--text-dim)}
+  .nav-links a{text-decoration:none}.nav-links a:hover{color:var(--text)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:10px;font-family:var(--display);font-weight:600;text-decoration:none;cursor:pointer;transition:.15s;border:1px solid transparent;white-space:nowrap}
+  .btn-sm{padding:8px 14px;font-size:14px;background:var(--accent);color:#1a1305}
+  .btn-sm:hover{background:#ffc857}
+  .btn-primary{padding:15px 24px;font-size:16px;background:var(--accent);color:#1a1305;box-shadow:0 10px 30px rgba(244,185,66,.22)}
+  .btn-primary:hover{background:#ffc857;transform:translateY(-1px)}
+  .btn-ghost{padding:15px 22px;font-size:16px;color:var(--text);border-color:var(--line);background:transparent}
+  .btn-ghost:hover{border-color:var(--text-dim)}
+  .btn-google{padding:16px 26px;font-size:17px;background:#fff;color:#1f1f1f;border-color:#dadce0}
+  .btn-google:hover{background:#f1f3f4;transform:translateY(-1px)}
+  .btn-google svg{width:20px;height:20px}
+  @media (max-width:720px){.nav-links a:not(.btn){display:none}}
+
+  /* ---------- hero ---------- */
+  .hero{padding:72px 0 56px}
+  .hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+  .hero h1{font-size:clamp(38px,5.6vw,64px);font-weight:700;margin:14px 0 18px}
+  .hero h1 em{font-style:normal;color:var(--accent)}
+  .hero p.lede{font-size:clamp(17px,2vw,20px);color:var(--text-dim);max-width:34em}
+  .hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+  .hero .fine{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+  .hero .fine b{color:var(--ok);font-weight:500}
+  @media (max-width:900px){.hero{padding:44px 0 36px}.hero .wrap{grid-template-columns:1fr;gap:34px}}
+
+  /* mock del visor */
+  .mock{background:linear-gradient(180deg,var(--bg-1),#0c1017);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+  .mock-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg-0)}
+  .mock-bar .dots{display:flex;gap:6px}.mock-bar .dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+  .mock-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg-1);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-family:var(--mono);font-size:12px;color:var(--text);min-width:0}
+  .mock-search .q{white-space:nowrap;overflow:hidden;border-right:2px solid var(--accent);animation:type 3.2s steps(22) 0.4s both, caret .8s step-end infinite}
+  .mock-search .ic{color:var(--accent-3)}
+  @keyframes type{from{width:0}to{width:22ch}}
+  @keyframes caret{50%{border-color:transparent}}
+  .mock svg{display:block;width:100%;height:auto}
+  .mock-foot{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);font-family:var(--mono)}
+  .mock-foot div{padding:10px 12px;border-right:1px solid var(--line)}
+  .mock-foot div:last-child{border-right:0}
+  .mock-foot span{display:block;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)}
+  .mock-foot b{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+  .mass{animation:rise 1.4s cubic-bezier(.2,.8,.2,1) 2.8s both;transform-origin:50% 100%;transform-box:fill-box}
+  @keyframes rise{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+  .lot-glow{animation:glow 1s ease 2.2s both}
+  @keyframes glow{from{opacity:0}to{opacity:1}}
+
+  /* ---------- franja ---------- */
+  .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(17,22,30,.6)}
+  .strip .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+  .strip div{padding:22px 20px;border-right:1px solid var(--line)}
+  .strip div:last-child{border-right:0}
+  .strip b{display:block;font-size:22px;font-weight:700}
+  .strip span{font-size:14px;color:var(--text-dim)}
+  @media (max-width:720px){.strip .wrap{grid-template-columns:1fr}.strip div{border-right:0;border-bottom:1px solid var(--line)}.strip div:last-child{border-bottom:0}}
+
+  /* ---------- secciones ---------- */
+  section{padding:88px 0}
+  .sec-head{max-width:720px;margin-bottom:44px}
+  .sec-head h2{font-size:clamp(30px,4vw,44px);font-weight:700;margin:10px 0 12px}
+  .sec-head p{color:var(--text-dim);font-size:18px}
+  @media (max-width:720px){section{padding:60px 0}}
+
+  /* problema vs LifeCity */
+  .versus{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .vs{border:1px solid var(--line);border-radius:14px;padding:26px}
+  .vs h3{font-size:18px;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .vs ul{list-style:none;display:flex;flex-direction:column;gap:10px;color:var(--text-dim);font-size:16px}
+  .vs li{display:grid;grid-template-columns:20px 1fr;gap:8px}
+  .vs.old li::before{content:'✕';color:var(--accent-2);font-family:var(--mono)}
+  .vs.new{border-color:rgba(244,185,66,.5);background:linear-gradient(180deg,rgba(244,185,66,.06),transparent)}
+  .vs.new li{color:var(--text)}
+  .vs.new li::before{content:'✓';color:var(--ok);font-family:var(--mono)}
+  @media (max-width:720px){.versus{grid-template-columns:1fr}}
+
+  /* beneficios */
+  .benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .benefit{background:linear-gradient(180deg,var(--bg-1),#0c1017);border:1px solid var(--line);border-radius:14px;padding:26px;transition:.2s}
+  .benefit:hover{border-color:#3a4a63;transform:translateY(-2px)}
+  .benefit.big{grid-column:span 2}
+  .benefit .ico{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;margin-bottom:16px;border:1px solid var(--line);background:var(--bg-0)}
+  .benefit .ico svg{width:22px;height:22px}
+  .benefit h3{font-size:21px;font-weight:600;margin-bottom:8px}
+  .benefit p{color:var(--text-dim);font-size:16px}
+  .benefit .kbd{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--accent-3);background:var(--bg-0);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+  @media (max-width:900px){.benefits{grid-template-columns:1fr 1fr}.benefit.big{grid-column:span 2}}
+  @media (max-width:620px){.benefits{grid-template-columns:1fr}.benefit.big{grid-column:auto}}
+
+  /* pasos */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+  .step{position:relative;padding:28px 24px;border-top:2px solid var(--line)}
+  .step::before{counter-increment:s;content:'0' counter(s);font-family:var(--mono);font-size:13px;color:var(--accent);display:block;margin-bottom:12px}
+  .step:first-child{border-top-color:var(--accent)}
+  .step h3{font-size:20px;margin-bottom:6px}
+  .step p{color:var(--text-dim);font-size:16px}
+  @media (max-width:720px){.steps{grid-template-columns:1fr}}
+
+  /* preguntas */
+  .faq{max-width:780px;display:flex;flex-direction:column;gap:10px}
+  details{border:1px solid var(--line);border-radius:12px;background:var(--bg-1);padding:0 20px}
+  summary{cursor:pointer;list-style:none;padding:18px 0;font-weight:600;font-size:17px;display:flex;justify-content:space-between;gap:16px}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:'+';font-family:var(--mono);color:var(--accent);font-size:20px;line-height:1}
+  details[open] summary::after{content:'−'}
+  details p{color:var(--text-dim);padding-bottom:18px;font-size:16px}
+
+  /* cierre */
+  .final{padding:30px 0 96px}
+  .final-card{position:relative;overflow:hidden;border:1px solid rgba(244,185,66,.45);border-radius:20px;padding:64px 28px;text-align:center;
+    background:radial-gradient(600px 300px at 50% 0%, rgba(244,185,66,.14), transparent 70%), linear-gradient(180deg,var(--bg-1),#0c1017)}
+  .final-card h2{font-size:clamp(32px,4.6vw,52px);font-weight:700;max-width:16em;margin:12px auto 14px}
+  .final-card p{color:var(--text-dim);font-size:18px;max-width:34em;margin:0 auto 32px}
+  .final-card .alt{margin-top:18px;font-size:14px;color:var(--text-dim)}
+  .final-card .alt a{color:var(--accent)}
+  .checks{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 22px;margin-top:28px;font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+  .checks span::before{content:'✓ ';color:var(--ok)}
+
+  footer{border-top:1px solid var(--line);padding:26px 0;font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+  footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+  footer b{color:var(--accent);font-weight:500}
+
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="./"><div class="mark"><span>LC</span></div><b>Life<i>City</i></b></a>
+    <div class="nav-links">
+      <a href="#beneficios">Beneficios</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#preguntas">Preguntas</a>
+      <a class="btn btn-sm" href="../login.html?modo=registro">Crear cuenta</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Plataforma urbana para lotes · Cali</div>
+      <h1>Del predial a lo que puedes construir, <em>en segundos.</em></h1>
+      <p class="lede">Escribe el predial o la dirección y LifeCity te muestra el lote sobre el catastro oficial, con su masa normativa en 3D. Sin tramitar planos ni esperar a nadie para saber si el negocio da.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="../login.html?modo=registro">Crear mi cuenta gratis →</a>
+        <a class="btn btn-ghost" href="#como-funciona">Ver cómo funciona</a>
+      </div>
+      <div class="fine"><b>●</b> Gratis para empezar · Entras con Google en un clic · Sin instalar nada</div>
+    </div>
+
+    <div class="mock" aria-label="Vista previa del visor LifeCity">
+      <div class="mock-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="mock-search"><span class="ic">⌕</span><span class="q">760010100150026002600</span></div>
+      </div>
+      <svg viewBox="0 0 520 330" role="img" aria-label="Lote seleccionado con su masa edificable">
+        <defs>
+          <pattern id="g" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M26 0H0V26" fill="none" stroke="#1a2230" stroke-width="1"/></pattern>
+        </defs>
+        <rect width="520" height="330" fill="url(#g)"/>
+        <!-- manzana: predios vecinos (isométrico) -->
+        <g stroke="#2a3548" stroke-width="1.2" fill="#11161e">
+          <polygon points="60,200 150,155 215,188 125,233"/>
+          <polygon points="125,233 215,188 280,221 190,266"/>
+          <polygon points="330,120 420,75 485,108 395,153"/>
+          <polygon points="150,155 240,110 305,143 215,188"/>
+          <polygon points="365,183 455,138 500,161 410,206"/>
+        </g>
+        <!-- edificios vecinos bajos -->
+        <g stroke="#2a3548" stroke-width="1">
+          <polygon points="80,196 140,166 140,146 80,176" fill="#1a2230"/>
+          <polygon points="140,166 185,189 185,169 140,146" fill="#141b26"/>
+          <polygon points="80,176 140,146 185,169 125,199" fill="#222c3d"/>
+          <polygon points="345,122 405,92 405,62 345,92" fill="#1a2230"/>
+          <polygon points="405,92 455,117 455,87 405,62" fill="#141b26"/>
+          <polygon points="345,92 405,62 455,87 395,117" fill="#222c3d"/>
+        </g>
+        <!-- lote seleccionado -->
+        <g class="lot-glow">
+          <polygon points="215,188 305,143 370,176 280,221" fill="rgba(77,208,225,.10)" stroke="#4dd0e1" stroke-width="2"/>
+          <!-- retiro / antejardín -->
+          <polygon points="233,187 305,151 352,175 280,211" fill="none" stroke="#4dd0e1" stroke-width="1" stroke-dasharray="4 4" opacity=".8"/>
+          <text x="300" y="236" fill="#4dd0e1" font-family="JetBrains Mono,monospace" font-size="10">antejardín 3.5 m</text>
+        </g>
+        <!-- masa normativa -->
+        <g class="mass">
+          <polygon points="238,188 300,157 300,67 238,98" fill="rgba(244,185,66,.30)" stroke="#f4b942" stroke-width="1.5"/>
+          <polygon points="300,157 347,180 347,90 300,67" fill="rgba(244,185,66,.18)" stroke="#f4b942" stroke-width="1.5"/>
+          <polygon points="238,98 300,67 347,90 285,121" fill="rgba(244,185,66,.45)" stroke="#f4b942" stroke-width="1.5"/>
+          <g stroke="#f4b942" stroke-width=".6" opacity=".55">
+            <line x1="238" y1="170" x2="300" y2="139"/><line x1="238" y1="152" x2="300" y2="121"/><line x1="238" y1="134" x2="300" y2="103"/><line x1="238" y1="116" x2="300" y2="85"/>
+            <line x1="300" y1="139" x2="347" y2="162"/><line x1="300" y1="121" x2="347" y2="144"/><line x1="300" y1="103" x2="347" y2="126"/><line x1="300" y1="85" x2="347" y2="108"/>
+          </g>
+          <line x1="360" y1="90" x2="360" y2="180" stroke="#8b97aa" stroke-width="1"/>
+          <text x="366" y="138" fill="#e6ecf5" font-family="JetBrains Mono,monospace" font-size="11">5 pisos</text>
+        </g>
+      </svg>
+      <div class="mock-foot">
+        <div><span>Área lote</span><b>412 m²</b></div>
+        <div><span>Índice const.</span><b>2.4</b></div>
+        <div><span>Área vendible</span><b style="color:var(--accent)">988 m²</b></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap">
+    <div><b>Catastro oficial</b><span>Predios del IDESC de la Alcaldía de Cali, no dibujos aproximados.</span></div>
+    <div><b>Norma del POT</b><span>Índices, retrocesos y antejardín aplicados sobre la forma real del lote.</span></div>
+    <div><b>Tus proyectos en la nube</b><span>Guardados en tu cuenta, desde cualquier computador.</span></div>
+  </div>
+</div>
+
+<!-- ============ ANTES / AHORA ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">El problema</div>
+      <h2>Evaluar un lote no debería tomar una semana.</h2>
+      <p>Cada oportunidad que se enfría mientras cruzas certificados, visores del municipio y hojas de cálculo es un negocio que se lleva otro.</p>
+    </div>
+    <div class="versus">
+      <div class="vs old reveal">
+        <h3>Como se hace hoy</h3>
+        <ul>
+          <li>Buscar el predio en un visor oficial lento y difícil de usar.</li>
+          <li>Leer el POT para sacar índices y retrocesos a mano.</li>
+          <li>Pedirle al arquitecto una cabida y esperar días.</li>
+          <li>Guardar los lotes en correos, fotos y hojas de Excel sueltas.</li>
+        </ul>
+      </div>
+      <div class="vs new reveal">
+        <h3>Con LifeCity</h3>
+        <ul>
+          <li>Pegas el predial o la dirección y el lote aparece.</li>
+          <li>La norma se aplica sola sobre la geometría real del predio.</li>
+          <li>Ves la masa edificable en 3D y ajustas frente y retrocesos al instante.</li>
+          <li>Todo queda ordenado en proyectos dentro de tu cuenta.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BENEFICIOS ============ -->
+<section id="beneficios" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Beneficios</div>
+      <h2>Todo lo que necesitas para decidir si un lote vale la pena.</h2>
+    </div>
+    <div class="benefits">
+      <article class="benefit big reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#4dd0e1" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+        <h3>Encuentra el lote en segundos</h3>
+        <p>Busca por número predial, NPN o dirección. LifeCity consulta el catastro oficial y te lleva directo al predio, con barrio, comuna, uso del suelo y área. Se acabó perder la mañana buscando en el visor del municipio.</p>
+        <span class="kbd">CL 30 # 5-19 → lote encontrado</span>
+      </article>
+      <article class="benefit reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#f4b942" stroke-width="2" stroke-linejoin="round"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M12 12 20 7.5M12 12v9M12 12 4 7.5"/></svg></div>
+        <h3>Interfaz intuitiva</h3>
+        <p>Si sabes usar un mapa, sabes usar LifeCity. Funciona en el navegador, sin instalar programas ni saber de BIM.</p>
+      </article>
+      <article class="benefit reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#f4b942" stroke-width="2" stroke-linecap="round"><path d="M4 20V10l8-6 8 6v10"/><path d="M9 20v-6h6v6"/></svg></div>
+        <h3>Cabida normativa al instante</h3>
+        <p>La masa del POT en 3D, con índices, retrocesos y antejardín. Eliges qué lado da a la calle y todo se recalcula.</p>
+      </article>
+      <article class="benefit reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#6bd96b" stroke-width="2" stroke-linecap="round"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19.5 10 4 4 0 0 1 18 18H7Z"/></svg></div>
+        <h3>Tus proyectos, siempre contigo</h3>
+        <p>Crea un proyecto por negocio, guarda sus lotes y estudios, y ábrelo desde la oficina, la casa o la obra. Solo tú lo ves.</p>
+      </article>
+      <article class="benefit reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#9c6bff" stroke-width="2" stroke-linecap="round"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M8 10h8M8 13h5"/></svg></div>
+        <h3>Pregúntale a tus datos</h3>
+        <p>El asistente con IA responde en español: filtra predios de una zona, resume por barrio o uso y te exporta la lista a CSV.</p>
+      </article>
+      <article class="benefit reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#4dd0e1" stroke-width="2" stroke-linecap="round"><path d="M3 21h18M5 21V9h6v12M13 21V4h6v17"/></svg></div>
+        <h3>Del lote al proyecto</h3>
+        <p>Cuando el lote convence, sigues en la misma plataforma: plantas por nivel, interiores con IA y cotización BIM.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CÓMO FUNCIONA ============ -->
+<section id="como-funciona" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Cómo funciona</div>
+      <h2>Tres pasos, menos de un minuto.</h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><h3>Entra con Google</h3><p>Un clic con tu cuenta de Google. Sin formularios ni contraseñas nuevas.</p></div>
+      <div class="step reveal"><h3>Escribe el predial</h3><p>O la dirección. El lote aparece sobre el catastro oficial con su información.</p></div>
+      <div class="step reveal"><h3>Mira lo que cabe</h3><p>Abre la masa normativa, ajusta retrocesos y guarda el estudio en tu proyecto.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PREGUNTAS ============ -->
+<section id="preguntas" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Preguntas frecuentes</div>
+      <h2>Antes de crear tu cuenta.</h2>
+    </div>
+    <div class="faq">
+      <details class="reveal"><summary>¿Cuánto cuesta?</summary><p>Crear la cuenta es gratis e incluye la búsqueda de lotes, la masa normativa y tus proyectos. El plan PRO suma accesos adicionales, como Facility Management y manejo de obra.</p></details>
+      <details class="reveal"><summary>¿Necesito instalar algo?</summary><p>No. LifeCity funciona en el navegador, en Chrome, Edge, Safari o Firefox. Solo algunas herramientas avanzadas de nubes de puntos usan un complemento local opcional.</p></details>
+      <details class="reveal"><summary>¿De dónde salen los datos?</summary><p>Los predios vienen del servicio oficial de catastro del IDESC de la Alcaldía de Cali. La norma volumétrica se basa en el POT de Cali. La cabida es una guía rápida para decidir y no reemplaza la revisión de un profesional ni la curaduría.</p></details>
+      <details class="reveal"><summary>¿Quién ve mis proyectos?</summary><p>Solo tú. Cada proyecto se guarda en tu cuenta y las reglas de la base de datos impiden que otro usuario lo lea o lo modifique.</p></details>
+      <details class="reveal"><summary>¿Y si no tengo cuenta de Google?</summary><p>También puedes registrarte con tu correo y una contraseña desde la misma pantalla.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CIERRE ============ -->
+<section class="final">
+  <div class="wrap">
+    <div class="final-card reveal">
+      <div class="eyebrow">Empieza hoy</div>
+      <h2>Tu próximo lote puede estar a un predial de distancia.</h2>
+      <p>Crea tu cuenta con Google y evalúa el primer lote antes de que se enfríe el café.</p>
+      <a class="btn btn-google" href="../login.html?modo=registro">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Crear cuenta con Google
+      </a>
+      <div class="alt">¿Ya tienes cuenta? <a href="../login.html">Inicia sesión</a></div>
+      <div class="checks"><span>Gratis para empezar</span><span>Sin tarjeta de crédito</span><span>Proyectos privados</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 <b>LifeCity</b> · Life City BIM Management Hub</span>
+    <span>lifecity.com.co</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      els.forEach(function (e) { e.classList.add('in'); }); return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+</script>
+</body>
+</html>

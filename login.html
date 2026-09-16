@@ -194,6 +194,7 @@ function setMode(m){
 }
 $('tab-login').onclick = ()=>setMode('login');
 $('tab-reg').onclick = ()=>setMode('reg');
+if (new URLSearchParams(location.search).get('modo') === 'registro') setMode('reg'); // viene de /crear-cuenta/
 $('forgot').onclick = async (e)=>{
   e.preventDefault();
   if (!fb) { show('ok','Modo local: crea una cuenta nueva o usa la cuenta demo.'); return; }
