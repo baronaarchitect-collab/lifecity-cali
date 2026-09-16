@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="auth.js"></script>
-<script src="supabase-config.js"></script>
+<script src="firebase-config.js"></script>
 <script src="platform.js"></script>
 <script src="lifecity-config.js"></script>
 <script src="osm-publish.js"></script>
@@ -229,6 +229,16 @@
       <button id="btn-logout" title="Cerrar sesión" style="margin-left:auto;background:var(--bg-2);border:1px solid var(--line);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:5px 8px;cursor:pointer">⏻</button>
     </div>
     <div id="user-chip" style="font-size:10px;color:var(--text-dim);margin-top:-10px">—</div>
+    <div class="section" id="prj-bar" style="display:none">
+      <h2><span>Mis proyectos</span><span class="dot" style="background:var(--ok)"></span></h2>
+      <div class="search-row" style="grid-template-columns:1fr auto auto auto">
+        <select id="prj-switch" title="Proyecto activo" style="flex:1;min-width:0;background:var(--bg-0);border:1px solid var(--line);color:var(--text);padding:7px 8px;font-family:var(--mono);font-size:11px"></select>
+        <button class="btn" id="btn-prj-new" title="Nuevo proyecto" style="width:auto"><span class="ic">＋</span></button>
+        <button class="btn" id="btn-prj-rename" title="Renombrar proyecto" style="width:auto"><span class="ic">✎</span></button>
+        <button class="btn" id="btn-prj-del" title="Eliminar proyecto" style="width:auto"><span class="ic" style="color:var(--accent-2)">✕</span></button>
+      </div>
+      <div class="hint" id="prj-hint">Tus propiedades y estudios de masas se guardan en el proyecto activo, en tu cuenta.</div>
+    </div>
     <div style="display:flex;gap:6px;margin-top:-6px">
       <a class="btn" href="agente/agente.html" style="text-decoration:none;border-color:#9c6bff"><span class="ic" style="color:#9c6bff">🛰️</span> Agente de mapas (IA)</a>
       <button class="btn" id="btn-plan" title="Plan / activar licencia" style="width:auto;min-width:64px;justify-content:center">FREE</button>
@@ -282,7 +292,7 @@
     <!-- ===== PROPIEDADES ===== -->
     <div class="section">
       <h2><span>Propiedades guardadas</span><span class="dot"></span></h2>
-      <div class="hint">Selecciona un predio buscado y pulsa <b>Guardar</b> en el panel derecho. Se conservan en este navegador.</div>
+      <div class="hint">Selecciona un predio buscado y pulsa <b>Guardar</b> en el panel derecho. Se guardan en el proyecto activo.</div>
       <button class="btn" id="btn-clear-saved"><span class="ic">✕</span> Vaciar propiedades guardadas</button>
     </div>
 
@@ -956,8 +966,8 @@ function showBuildingInfo(b){
 }
 
 // ===================== ESTUDIOS DE MASAS (dashboard) =====================
-const STUDIES_KEY = 'cali_massing_studies';
-function readStudies() { try { return JSON.parse(localStorage.getItem(STUDIES_KEY) || '{}'); } catch (e) { return {}; } }
+const studiesKey = () => (window.LifePlatform && LifePlatform.isLogged()) ? LifePlatform.studiesKey() : 'cali_massing_studies';
+function readStudies() { try { return JSON.parse(localStorage.getItem(studiesKey()) || '{}'); } catch (e) { return {}; } }
 function renderStudies() {
   const list = $('study-list'); const studies = readStudies(); const keys = Object.keys(studies);
   if (!keys.length) { list.innerHTML = '<div class="empty">Sin estudios. Crea uno en "Diseñar masas" y guárdalo.</div>'; return; }
@@ -972,7 +982,7 @@ function renderStudies() {
       <div class="meta"><span>${(s.masses||[]).length} masas</span> · <span>${(s.levels||[]).length} niveles</span> · <span>${(s.walls||[]).length} muros</span></div>
       <div class="coords">Área constr. ${r.area_construida ? r.area_construida.toLocaleString() : '—'} m² · índice ${r.indice != null ? r.indice : '—'} · ${s.savedAt ? new Date(s.savedAt).toLocaleDateString('es-CO') : ''}</div>
       <div class="badges"><span class="badge on" style="color:#9c6bff;border-color:#9c6bff">◱ ABRIR ESTUDIO</span></div>`;
-    card.querySelector('.del').onclick = (e) => { e.stopPropagation(); const all = readStudies(); delete all[k]; localStorage.setItem(STUDIES_KEY, JSON.stringify(all)); renderStudies(); toast('Estudio eliminado', ''); };
+    card.querySelector('.del').onclick = (e) => { e.stopPropagation(); const all = readStudies(); delete all[k]; localStorage.setItem(studiesKey(), JSON.stringify(all)); if (window.LifePlatform) LifePlatform.markDirty(); renderStudies(); toast('Estudio eliminado', ''); };
     card.onclick = () => openStudy(k);
     list.appendChild(card);
   }
@@ -1538,7 +1548,7 @@ if (OSM) {
   };
 }
 $('btn-clear-saved').onclick = () => {
-  if (!confirm('¿Eliminar todas las propiedades guardadas de este navegador?')) return;
+  if (!confirm('¿Eliminar todas las propiedades guardadas del proyecto activo?')) return;
   state.projects = state.projects.filter(p => !p.saved);
   localStorage.removeItem(propsKey()); if (window.LifePlatform) LifePlatform.pushDebounced();
   rebuildProjects(); refreshProjectList(); refreshMetrics();
@@ -1678,10 +1688,50 @@ async function parcelAt(centroid){
 window.addEventListener('osm-connected', () => { if (typeof updateOsmStatus === 'function') updateOsmStatus(); toast('Cuenta OSM conectada ✓', 'ok'); });
 (async () => {
   if (window.LifePlatform) { try { await LifePlatform.ready; } catch (e) {}
-    if ($('btn-plan')) { $('btn-plan').textContent = LifePlatform.plan().toUpperCase(); } }
+    if ($('btn-plan')) { $('btn-plan').textContent = LifePlatform.plan().toUpperCase(); }
+    renderProjectBar(); }
   loadPersistedProperties();
   renderStudies();
 })();
+
+// ===================== MIS PROYECTOS (Firebase, por usuario) =====================
+function renderProjectBar() {
+  if (!window.LifePlatform || !LifePlatform.isLogged()) return;
+  const list = LifePlatform.projects(); const active = LifePlatform.activeProject();
+  if (!list.length || !active) return;
+  $('prj-bar').style.display = 'flex';
+  const sel = $('prj-switch'); sel.innerHTML = '';
+  for (const p of list) {
+    const o = document.createElement('option'); o.value = p.id;
+    o.textContent = p.name + ' · ' + p.properties + ' lote(s) · ' + p.studies + ' estudio(s)';
+    if (p.id === active.id) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+$('prj-switch').onchange = async (e) => {
+  showLoading('ABRIENDO PROYECTO...');
+  try { await LifePlatform.switchProject(e.target.value); } catch (err) { hideLoading(); toast('Proyecto: ' + err.message, 'err'); }
+};
+$('btn-prj-new').onclick = async () => {
+  const name = prompt('Nombre del nuevo proyecto:', 'Proyecto ' + (LifePlatform.projects().length + 1));
+  if (name == null) return;
+  showLoading('CREANDO PROYECTO...');
+  try { await LifePlatform.createProject(name); } catch (err) { hideLoading(); toast('Proyecto: ' + err.message, 'err'); }
+};
+$('btn-prj-rename').onclick = async () => {
+  const p = LifePlatform.activeProject(); if (!p) return;
+  const name = prompt('Nuevo nombre del proyecto:', p.name);
+  if (!name || name === p.name) return;
+  try { await LifePlatform.renameProject(p.id, name); renderProjectBar(); toast('Proyecto renombrado ✓', 'ok'); }
+  catch (err) { toast('Proyecto: ' + err.message, 'err'); }
+};
+$('btn-prj-del').onclick = async () => {
+  const p = LifePlatform.activeProject(); if (!p) return;
+  if (!confirm('¿Eliminar el proyecto "' + p.name + '" con sus ' + p.properties + ' propiedad(es) y ' + p.studies + ' estudio(s)? No se puede deshacer.')) return;
+  showLoading('ELIMINANDO PROYECTO...');
+  try { await LifePlatform.deleteProject(p.id); } catch (err) { hideLoading(); toast('Proyecto: ' + err.message, 'err'); }
+};
+window.addEventListener('lifeplatform-message', (e) => toast(e.detail, 'err'));
 
 // ===================== ASISTENTE DE DATOS (IA) — consultas en lenguaje natural =====================
 const gQuery = new THREE.Group(); scene.add(gQuery);

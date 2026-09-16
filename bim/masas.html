@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="auth.js"></script>
-<script src="../supabase-config.js"></script>
+<script src="../firebase-config.js"></script>
 <script src="../platform.js"></script>
 <script src="../lifecity-config.js"></script>
 <script src="learn.js"></script>
@@ -1415,7 +1415,7 @@ document.querySelectorAll('.modal').forEach(m=>m.addEventListener('mousedown',(e
 function flash(msg,color){ const t=$('flash'); t.style.borderColor=color||'#9c6bff'; t.textContent=msg; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',3600); }
 function download(text,name,mime){ const b=new Blob([text],{type:mime||'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
 
-const STUDIES_KEY='cali_massing_studies';
+const studiesKey=()=>(window.LifePlatform&&LifePlatform.isLogged())?LifePlatform.studiesKey():'cali_massing_studies';
 function studyKey(){ return (lot && (lot.npn||lot.numepred||lot.direpred)) || 'sin_predio'; }
 function collectStudy(){ return { predio: lot||null, savedAt:new Date().toISOString(),
   projectType, funding, potCfg:{frenteIdx, roles:edgeRolesOverride},
@@ -1428,9 +1428,9 @@ function collectStudy(){ return { predio: lot||null, savedAt:new Date().toISOStr
   rooms: rooms.map(r=>({id:r.id,name:r.name,uso:r.uso||'habitacion',level:r.level,x:r.x,z:r.z,w:r.w,d:r.d,tenant:r.tenant,from:r.from,to:r.to,canon:r.canon,docs:r.docs})),
   apus, cloudXform:{p:[gCloud.position.x,gCloud.position.y,gCloud.position.z],s:gCloud.scale.x,r:gCloud.rotation.y} }; }
 function saveStudy(){ if(!lot){ flash('Abre un predio desde el visor para guardar.','#ff5252'); return; }
-  let all={}; try{ all=JSON.parse(localStorage.getItem(STUDIES_KEY)||'{}'); }catch(e){}
+  let all={}; try{ all=JSON.parse(localStorage.getItem(studiesKey())||'{}'); }catch(e){}
   all[studyKey()]=collectStudy();
-  try{ localStorage.setItem(STUDIES_KEY, JSON.stringify(all)); flash('Proyecto guardado ✓ (disponible en el dashboard del visor).','#6bd96b'); }
+  try{ localStorage.setItem(studiesKey(), JSON.stringify(all)); if(window.LifePlatform) LifePlatform.markDirty(); flash('Proyecto guardado ✓ (disponible en el dashboard del visor).','#6bd96b'); }
   catch(e){ flash('No se pudo guardar (¿documentos muy grandes?): '+e.message,'#ff5252'); } }
 function restoreStudy(st){
   if(st.potCfg && footprint.length>2){

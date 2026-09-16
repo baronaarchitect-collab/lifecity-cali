@@ -47,17 +47,30 @@
   .foot b{color:var(--accent)}
   .backend{margin-top:12px;text-align:center;font-size:9px;letter-spacing:1px;text-transform:uppercase}
   .backend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--text-dim);margin-right:5px;vertical-align:middle}
-  .backend.local .dot{background:var(--accent)} .backend.supa .dot{background:var(--ok)}
+  .backend.local .dot{background:var(--accent)} .backend.fire .dot{background:var(--ok)}
+  .google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:8px;font-family:var(--display);font-weight:600;font-size:14px;cursor:pointer;transition:.15s}
+  .google:hover{background:#f1f3f4}
+  .google:disabled{opacity:.6;cursor:progress}
+  .google svg{width:18px;height:18px;flex:none}
+  .or{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:var(--text-dim);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  .or::before,.or::after{content:'';flex:1;height:1px;background:var(--line)}
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-<script src="supabase-config.js"></script>
+<script src="firebase-config.js"></script>
 </head>
 <body>
 <div class="wrap">
   <div class="brand"><div class="mark"><span>LC</span></div><h1>Life<b>City</b></h1></div>
   <div class="card">
     <div class="tag">Plataforma Urbana AEC · Cali</div>
+    <div id="google-block" style="display:none">
+      <button type="button" class="google" id="btn-google">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuar con Google
+      </button>
+      <div class="or">o con tu correo</div>
+    </div>
     <div class="tabs">
       <button id="tab-login" class="on">Iniciar sesión</button>
       <button id="tab-reg">Crear cuenta</button>
@@ -90,28 +103,18 @@
 
 <script type="module">
 // ==================== CONFIG ====================
-// Para autenticación REAL multi-dispositivo, pega tu proyecto Supabase.
-// Si se dejan vacías, funciona en MODO LOCAL (cuentas guardadas en este navegador).
-const CFG = window.SUPABASE_CONFIG || {};
-const SUPABASE_URL = CFG.url || '';
-const SUPABASE_ANON_KEY = CFG.anonKey || '';
+// Autenticación REAL con Firebase (Google + correo). Configuración en firebase-config.js.
+// Si firebase-config.js está vacío, funciona en MODO LOCAL (cuentas guardadas en este navegador).
+const CFG = window.FIREBASE_CONFIG || {};
+const SDK = window.FIREBASE_SDK || 'https://www.gstatic.com/firebasejs/10.12.2/';
 const REDIRECT_AFTER_LOGIN = 'ciudades.html';
 const SESSION_KEY = 'lifecity_session';
 const USERS_KEY = 'lifecity_users';
+const LOGOUT_FLAG = 'lifecity_logout';
 
 const $ = (id) => document.getElementById(id);
-const useSupa = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
-let supa = null;
-
-if (useSupa) {
-  $('backend').className = 'backend supa';
-  $('backend-txt').textContent = 'Supabase Auth';
-  $('demohint').style.display = 'none';
-  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-} else {
-  seedDemo();
-}
+const useFire = !!(CFG.apiKey && CFG.projectId);
+let fb = null;
 
 // ==================== HELPERS ====================
 async function sha256(str){
@@ -129,12 +132,55 @@ async function seedDemo(){
     setUsers(users);
   }
 }
-function setSession(email, name){
+function setSession(email, name, extra){
   const remember = $('remember').checked;
   const exp = Date.now() + (remember ? 30*864e5 : 12*36e5); // 30 días / 12 h
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ email, name: name||email, exp }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify(Object.assign({ email, name: name||email, exp }, extra||{})));
 }
 function show(kind, text){ const m=$('msg'); m.className='msg show '+kind; m.textContent=text; }
+function go(){ setTimeout(()=> location.href = REDIRECT_AFTER_LOGIN, 400); }
+
+const FB_ERRORS = {
+  'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+  'auth/wrong-password': 'Contraseña incorrecta.',
+  'auth/user-not-found': 'No existe una cuenta con ese correo. Crea una cuenta.',
+  'auth/email-already-in-use': 'Ya existe una cuenta con ese correo. Inicia sesión (o entra con Google).',
+  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+  'auth/invalid-email': 'Correo no válido.',
+  'auth/popup-closed-by-user': 'Cerraste la ventana de Google antes de terminar.',
+  'auth/cancelled-popup-request': 'Cerraste la ventana de Google antes de terminar.',
+  'auth/unauthorized-domain': 'Este dominio no está autorizado en Firebase (Authentication → Settings → Dominios autorizados).',
+  'auth/account-exists-with-different-credential': 'Ese correo ya está registrado con otro método de acceso.',
+  'auth/too-many-requests': 'Demasiados intentos. Espera un momento y vuelve a intentar.',
+  'auth/network-request-failed': 'Sin conexión con Firebase. Revisa tu internet.'
+};
+function fbMessage(err){ return FB_ERRORS[err && err.code] || (err && err.message) || 'Error de autenticación.'; }
+
+function enterWithUser(user){
+  setSession(user.email || '', user.displayName || user.email || 'Usuario',
+    { uid: user.uid, provider: 'firebase', photo: user.photoURL || '' });
+  show('ok', 'Bienvenido, ' + (user.displayName || user.email) + '. Entrando…');
+  go();
+}
+
+// ==================== INIT ====================
+if (useFire) {
+  $('backend').className = 'backend fire';
+  $('backend-txt').textContent = 'Firebase Auth';
+  $('demohint').style.display = 'none';
+  $('google-block').style.display = 'block';
+  try {
+    const appMod = await import(SDK + 'firebase-app.js');
+    const authMod = await import(SDK + 'firebase-auth.js');
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(CFG);
+    fb = { m: authMod, auth: authMod.getAuth(app) };
+    fb.auth.languageCode = 'es';
+  } catch (e) {
+    show('err', 'No se pudo cargar Firebase: ' + e.message);
+  }
+} else {
+  seedDemo();
+}
 
 // ==================== UI TABS ====================
 let mode = 'login';
@@ -148,9 +194,36 @@ function setMode(m){
 }
 $('tab-login').onclick = ()=>setMode('login');
 $('tab-reg').onclick = ()=>setMode('reg');
-$('forgot').onclick = (e)=>{ e.preventDefault(); show('ok', useSupa ? 'Revisa tu correo para restablecer (si configuras el flujo de recuperación en Supabase).' : 'Modo local: crea una cuenta nueva o usa la cuenta demo.'); };
+$('forgot').onclick = async (e)=>{
+  e.preventDefault();
+  if (!fb) { show('ok','Modo local: crea una cuenta nueva o usa la cuenta demo.'); return; }
+  const email = $('email').value.trim().toLowerCase();
+  if (!email) { show('err','Escribe tu correo arriba y vuelve a pulsar "¿Olvidaste tu contraseña?".'); return; }
+  try { await fb.m.sendPasswordResetEmail(fb.auth, email); show('ok','Te enviamos un correo para restablecer la contraseña.'); }
+  catch (err) { show('err', fbMessage(err)); }
+};
 
-// ==================== SUBMIT ====================
+// ==================== GOOGLE ====================
+$('btn-google').onclick = async ()=>{
+  if (!fb) return;
+  $('btn-google').disabled = true;
+  const provider = new fb.m.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  try {
+    const cred = await fb.m.signInWithPopup(fb.auth, provider);
+    enterWithUser(cred.user);
+  } catch (err) {
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      show('ok','Abriendo Google…');
+      await fb.m.signInWithRedirect(fb.auth, provider);
+      return;
+    }
+    show('err', fbMessage(err));
+    $('btn-google').disabled = false;
+  }
+};
+
+// ==================== SUBMIT (correo) ====================
 $('form').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email = $('email').value.trim().toLowerCase();
@@ -159,10 +232,10 @@ $('form').addEventListener('submit', async (e)=>{
   if (!email || pass.length < 6){ show('err','Correo válido y contraseña de 6+ caracteres.'); return; }
   $('submit').disabled = true;
   try {
-    if (useSupa) await handleSupa(email, pass, name);
+    if (fb) await handleFire(email, pass, name);
     else await handleLocal(email, pass, name);
   } catch (err) {
-    show('err', err.message || 'Error de autenticación.');
+    show('err', fb ? fbMessage(err) : (err.message || 'Error de autenticación.'));
     $('submit').disabled = false;
   }
 });
@@ -184,39 +257,41 @@ async function handleLocal(email, pass, name){
     setSession(email, u.name);
     show('ok','Bienvenido, '+(u.name||email)+'. Entrando…');
   }
-  setTimeout(()=> location.href = REDIRECT_AFTER_LOGIN, 500);
+  go();
 }
 
-// Guarda el registro como "lead" en una tabla visible de Supabase (no bloqueante).
-async function captureLead(email, name){
-  if (!supa) return;
-  try {
-    const { error } = await supa.from('leads').insert({ email, name: name || null, source: 'signup', user_agent: navigator.userAgent });
-    if (error) console.warn('Lead no guardado:', error.message);
-  } catch (e) { console.warn('Lead no guardado:', e.message); }
-}
-
-async function handleSupa(email, pass, name){
+async function handleFire(email, pass, name){
   if (mode === 'reg'){
-    const { data, error } = await supa.auth.signUp({ email, password: pass, options:{ data:{ name } } });
-    if (error) throw error;
-    await captureLead(email, name);
-    if (data.session){ setSession(email, name); show('ok','Cuenta creada. Entrando…'); setTimeout(()=>location.href=REDIRECT_AFTER_LOGIN,500); }
-    else { show('ok','Cuenta creada. Revisa tu correo para confirmar y luego inicia sesión.'); $('submit').disabled=false; setMode('login'); }
+    const cred = await fb.m.createUserWithEmailAndPassword(fb.auth, email, pass);
+    if (name) { try { await fb.m.updateProfile(cred.user, { displayName: name }); } catch (e) {} }
+    enterWithUser(cred.user);
   } else {
-    const { data, error } = await supa.auth.signInWithPassword({ email, password: pass });
-    if (error) throw error;
-    setSession(email, (data.user && data.user.user_metadata && data.user.user_metadata.name) || email);
-    show('ok','Bienvenido. Entrando…');
-    setTimeout(()=> location.href = REDIRECT_AFTER_LOGIN, 500);
+    const cred = await fb.m.signInWithEmailAndPassword(fb.auth, email, pass);
+    enterWithUser(cred.user);
   }
 }
 
-// Si ya hay sesión válida, entra directo.
-try {
-  const s = JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
-  if (s && (!s.exp || Date.now() < s.exp)) location.replace(REDIRECT_AFTER_LOGIN);
-} catch(e){}
+// ==================== SESIÓN EXISTENTE ====================
+if (localStorage.getItem(LOGOUT_FLAG)) {
+  // Venimos de "Cerrar sesión": cerrar también la sesión de Firebase y quedarse aquí.
+  localStorage.removeItem(LOGOUT_FLAG);
+  localStorage.removeItem(SESSION_KEY);
+  if (fb) { try { await fb.m.signOut(fb.auth); } catch (e) {} }
+} else if (fb) {
+  try {
+    const r = await fb.m.getRedirectResult(fb.auth);
+    if (r && r.user) { enterWithUser(r.user); }
+    else {
+      const user = await new Promise(res => { const un = fb.m.onAuthStateChanged(fb.auth, u => { un(); res(u); }); });
+      if (user) enterWithUser(user);
+    }
+  } catch (err) { show('err', fbMessage(err)); }
+} else {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY)||'null');
+    if (s && (!s.exp || Date.now() < s.exp)) location.replace(REDIRECT_AFTER_LOGIN);
+  } catch(e){}
+}
 </script>
 </body>
 </html>

@@ -18,6 +18,10 @@
     user: function () { return s; },
     name: function () { return (s && (s.name || s.email)) || 'Usuario'; },
     loggedIn: function () { return true; },
-    logout: function () { try { localStorage.removeItem(KEY); } catch (e) {} location.replace(LOGIN); }
+    logout: function () {
+      try { localStorage.setItem('lifecity_logout', '1'); } catch (e) {}
+      var done = function () { try { localStorage.removeItem(KEY); } catch (e) {} location.replace(LOGIN); };
+      if (window.LifePlatform && window.LifePlatform.logout) window.LifePlatform.logout().then(done, done); else done();
+    }
   };
 })();

@@ -12,6 +12,10 @@
     user: function () { return s; },
     name: function () { return (s && (s.name || s.email)) || 'Invitado'; },
     loggedIn: function () { return !!s; },
-    logout: function () { try { localStorage.removeItem(KEY); } catch (e) {} location.replace('login.html'); }
+    logout: function () {
+      try { localStorage.setItem('lifecity_logout', '1'); } catch (e) {}
+      var done = function () { try { localStorage.removeItem(KEY); } catch (e) {} (window.top || window).location.replace('../login.html'); };
+      if (window.LifePlatform && window.LifePlatform.logout) window.LifePlatform.logout().then(done, done); else done();
+    }
   };
 })();
