@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke-linejoin="round" stroke-linecap="round"><rect width="64" height="64" rx="14" fill="#0A0D12" stroke="none"/><g transform="translate(3.2 3.2) scale(.9)">
+  <!-- losa: lote isométrico con retícula -->
+  <g stroke="#4DD0E1" stroke-width="2.1">
+    <path d="M6 38 32 25 58 38 32 51Z"/>
+    <path d="M6 38v5l26 13 26-13v-5M32 51v5"/>
+    <path d="M14.67 33.67 40.67 46.67M23.33 29.33 49.33 42.33M14.67 42.33 40.67 29.33M23.33 46.67 49.33 33.67"/>
+  </g>
+  <!-- volumen edificable -->
+  <g stroke="#F4B942" stroke-width="2.1">
+    <path d="M23.33 38 32 42.33V16.33L23.33 12Z" fill="#F4B942"/>
+    <path d="M32 42.33 40.67 38V12L32 16.33Z" fill="#0A0D12"/>
+    <path d="M23.33 12 32 7.67 40.67 12 32 16.33Z" fill="#0A0D12"/>
+  </g>
+</g></svg>
