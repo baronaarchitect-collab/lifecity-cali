@@ -101,6 +101,21 @@
   .hud-tr { top: 16px; right: 16px; text-align: right; }
   .hud-bl { bottom: 16px; left: 16px; }
   .hud-br { bottom: 16px; right: 16px; text-align: right; }
+
+  /* ===== MEDIDOR ===== */
+  #measure-bar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5;
+    display: flex; gap: 6px; align-items: center; background: rgba(17,22,30,.92); border: 1px solid var(--line);
+    padding: 6px; font-family: var(--mono); font-size: 11px; max-width: calc(100% - 32px); flex-wrap: wrap; justify-content: center; }
+  #measure-bar .btn { width: auto; padding: 6px 10px; }
+  #measure-bar .btn.on { background: var(--accent); color: #1a1305; border-color: var(--accent); font-weight: 600; }
+  #measure-bar .btn.on .ic { color: #1a1305; }
+  #measure-out { color: var(--text); padding: 0 6px; white-space: nowrap; }
+  #measure-out b { color: var(--accent); font-weight: 500; }
+  #measure-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .m-lbl { position: absolute; transform: translate(-50%, -50%); background: rgba(10,13,18,.88); color: var(--accent);
+    border: 1px solid rgba(244,185,66,.6); font-family: var(--mono); font-size: 10px; padding: 1px 5px; white-space: nowrap; }
+  .m-lbl.area { color: var(--text); border-color: var(--accent-3); font-size: 11px; }
+  #center.measuring #canvas { cursor: crosshair; }
   .hud .v { color: var(--accent); }
   .hud .lbl { color: var(--text-dim); margin-right: 6px; }
 
@@ -389,6 +404,14 @@
       <div>CALI · VALLE DEL CAUCA · COLOMBIA</div>
       <div style="color: var(--accent);">v0.2 · LIFE CITY BIM</div>
       <div style="color: var(--text-dim);">© OpenStreetMap · Catastro Cali IDESC</div>
+    </div>
+    <div id="measure-labels"></div>
+    <div id="measure-bar">
+      <button class="btn" id="btn-measure" title="Medir distancias y áreas (M). Clic para poner puntos, doble clic o Enter para cerrar el área, Esc para terminar."><span class="ic">📏</span> Medir</button>
+      <button class="btn" id="btn-measure-lot" title="Acota los lados, el perímetro y el área del lote seleccionado"><span class="ic">▭</span> Medir lote</button>
+      <button class="btn" id="btn-measure-undo" title="Quitar el último punto (Backspace)" style="display:none"><span class="ic">↶</span></button>
+      <button class="btn" id="btn-measure-clear" title="Borrar medición" style="display:none"><span class="ic">✕</span></button>
+      <span id="measure-out"></span>
     </div>
     <div class="loading" id="loading">CARGANDO...</div>
     <div class="toast" id="toast"></div>
@@ -908,10 +931,12 @@ function showPredioInfo(props, centroid) {
       <div class="actions">
         <button class="btn primary" id="btn-save-predio"><span class="ic">★</span> Guardar</button>
         <button class="btn" id="btn-fly-predio"><span class="ic">◎</span> Centrar</button>
+        <button class="btn" id="btn-measure-predio"><span class="ic">📏</span> Medir</button>
       </div>
       ${actionsHTML()}
     </div>`;
   $('btn-save-predio').onclick = () => savePredioAsProperty(props, centroid);
+  $('btn-measure-predio').onclick = () => measureSelectedLot();
   $('btn-fly-predio').onclick = () => {
     const l = latLonToLocal(centroid.lat, centroid.lon);
     controls.target.set(l.x, 0, l.z);
@@ -1453,7 +1478,14 @@ function setMouse(e) {
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 }
+let downXY = null;
+canvas.addEventListener('pointerdown', (e) => { downXY = [e.clientX, e.clientY]; });
 canvas.addEventListener('click', (e) => {
+  // Medidor activo: el clic pone puntos (si fue un arrastre de cámara, se ignora)
+  if (M.active) {
+    if (downXY && Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]) > 5) return;
+    measureClick(e); return;
+  }
   setMouse(e); raycaster.setFromCamera(mouse, camera);
   // Proyectos primero
   const ph = raycaster.intersectObjects(gProjects.children, false);
@@ -1476,6 +1508,183 @@ canvas.addEventListener('mousemove', (e) => {
     const ll = localToLatLon(hits[0].point.x, hits[0].point.z);
     $('cursor-coords').innerHTML = `<span class="lbl">LAT/LON</span><span class="v">${ll.lat.toFixed(6)}, ${ll.lon.toFixed(6)}</span>`;
   }
+  if (M.active) measureHover(e);
+});
+
+// ===================== MEDIDOR (distancias, perímetro y área) =====================
+// Los puntos se guardan en coordenadas locales (x,z). Las distancias y áreas se calculan
+// sobre lat/lon reales (haversine + plano tangente), no sobre metros Mercator, que se
+// estiran 1/cos(lat). Se "imanta" a los vértices de los lotes catastrales cargados.
+const gMeasure = new THREE.Group(); scene.add(gMeasure);
+const M = { active: false, pts: [], closed: false, hover: null, labels: [], lot: false };
+const mLineMat = new THREE.LineBasicMaterial({ color: 0xf4b942, depthTest: false, transparent: true });
+const mGhostMat = new THREE.LineDashedMaterial({ color: 0xf4b942, dashSize: 2, gapSize: 1.5, depthTest: false, transparent: true, opacity: 0.8 });
+const mFillMat = new THREE.MeshBasicMaterial({ color: 0xf4b942, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthTest: false });
+const mDotMat = new THREE.PointsMaterial({ color: 0xf4b942, size: 8, sizeAttenuation: false, depthTest: false, transparent: true });
+const mSnapMat = new THREE.PointsMaterial({ color: 0x4dd0e1, size: 12, sizeAttenuation: false, depthTest: false, transparent: true });
+const MY = 0.6; // altura de dibujo sobre los lotes
+
+function geoDist(a, b) {
+  const A = localToLatLon(a.x, a.z), B = localToLatLon(b.x, b.z);
+  const dLat = (B.lat - A.lat) * DEG, dLon = (B.lon - A.lon) * DEG;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(A.lat * DEG) * Math.cos(B.lat * DEG) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371008.8 * Math.asin(Math.sqrt(h));
+}
+function geoArea(pts) {
+  if (pts.length < 3) return 0;
+  const ll = pts.map(p => localToLatLon(p.x, p.z));
+  const lat0 = ll.reduce((s, p) => s + p.lat, 0) / ll.length, k = Math.cos(lat0 * DEG) * 6371008.8 * DEG;
+  const xy = ll.map(p => [p.lon * k, p.lat * 6371008.8 * DEG]);
+  let a = 0;
+  for (let i = 0; i < xy.length; i++) { const [x1, y1] = xy[i], [x2, y2] = xy[(i + 1) % xy.length]; a += x1 * y2 - x2 * y1; }
+  return Math.abs(a) / 2;
+}
+const fmtM = (m) => m >= 1000 ? (m / 1000).toFixed(3) + ' km' : m.toFixed(2) + ' m';
+const fmtA = (a) => a >= 10000 ? a.toLocaleString('es-CO', { maximumFractionDigits: 0 }) + ' m² · ' + (a / 10000).toFixed(3) + ' ha' : a.toLocaleString('es-CO', { maximumFractionDigits: 1 }) + ' m²';
+
+function measureGroundPoint(e) {
+  setMouse(e); raycaster.setFromCamera(mouse, camera);
+  const hit = raycaster.intersectObject(ground)[0];
+  if (!hit) return null;
+  const p = { x: hit.point.x, z: hit.point.z, snap: false };
+  // Imán: vértices de lotes y el primer punto (para cerrar el área), a ≤ 12 px en pantalla
+  const tol = camera.position.distanceTo(hit.point) * Math.tan(camera.fov * DEG / 2) * 2 / canvas.clientHeight * 12;
+  let best = tol * tol, bx = null;
+  const consider = (x, z) => { const d = (x - p.x) ** 2 + (z - p.z) ** 2; if (d < best) { best = d; bx = { x, z }; } };
+  if (M.pts.length >= 3 && !M.closed) consider(M.pts[0].x, M.pts[0].z);
+  for (const par of state.parcels.values()) {
+    if (!par.localRing) par.localRing = ringToLocal(par.ring);
+    const c = par.localRing[0]; if (!c || Math.abs(c.x - p.x) > 400 || Math.abs(c.z - p.z) > 400) continue;
+    for (const v of par.localRing) consider(v.x, v.z);
+  }
+  if (bx) { p.x = bx.x; p.z = bx.z; p.snap = true; }
+  return p;
+}
+function measureClick(e) {
+  const p = measureGroundPoint(e); if (!p) return;
+  if (M.closed || M.lot) { M.pts = []; M.closed = false; M.lot = false; }
+  const first = M.pts[0], last = M.pts[M.pts.length - 1];
+  if (first && M.pts.length >= 3 && p.snap && p.x === first.x && p.z === first.z) { M.closed = true; drawMeasure(); return; }
+  if (last && Math.hypot(p.x - last.x, p.z - last.z) < 0.05) return; // doble clic / punto repetido
+  M.pts.push({ x: p.x, z: p.z });
+  drawMeasure();
+}
+function measureHover(e) {
+  M.hover = (M.closed || M.lot) ? null : measureGroundPoint(e);
+  drawMeasure();
+}
+function closeMeasure() { if (M.pts.length >= 3 && !M.closed) { M.closed = true; M.hover = null; drawMeasure(); } }
+function undoMeasure() { if (M.lot) return clearMeasure(); if (M.closed) M.closed = false; else M.pts.pop(); drawMeasure(); }
+function clearMeasure() { M.pts = []; M.closed = false; M.lot = false; M.hover = null; drawMeasure(); }
+
+function addLabel(x, z, html, cls = '') { const el = document.createElement('div'); el.className = 'm-lbl ' + cls; el.innerHTML = html; $('measure-labels').appendChild(el); M.labels.push({ v: new THREE.Vector3(x, MY, z), el }); }
+function drawMeasure() {
+  gMeasure.clear(); $('measure-labels').innerHTML = ''; M.labels = [];
+  const pts = M.pts, n = pts.length;
+  const v3 = (p) => new THREE.Vector3(p.x, MY, p.z);
+  if (n) {
+    const path = pts.map(v3); if (M.closed) path.push(v3(pts[0]));
+    if (path.length > 1) { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(path), mLineMat); l.renderOrder = 20; gMeasure.add(l); }
+    const dots = new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts.map(v3)), mDotMat); dots.renderOrder = 21; gMeasure.add(dots);
+    if (M.closed) {
+      const shape = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x, -p.z)));
+      const g = new THREE.ShapeGeometry(shape); g.rotateX(-Math.PI / 2);
+      const f = new THREE.Mesh(g, mFillMat); f.position.y = MY - 0.05; f.renderOrder = 19; gMeasure.add(f);
+    }
+  }
+  // Cotas por tramo
+  let total = 0;
+  const segs = M.closed ? n : n - 1;
+  for (let i = 0; i < segs; i++) {
+    const a = pts[i], b = pts[(i + 1) % n], d = geoDist(a, b); total += d;
+    if (!M.lot || d >= 1.5) addLabel((a.x + b.x) / 2, (a.z + b.z) / 2, fmtM(d)); // en lotes, sin cotas de tramos < 1,5 m
+  }
+  // Tramo provisional hasta el cursor
+  const h = M.hover;
+  if (h) {
+    const sp = new THREE.Points(new THREE.BufferGeometry().setFromPoints([v3(h)]), h.snap ? mSnapMat : mDotMat); sp.renderOrder = 22; gMeasure.add(sp);
+    if (n) {
+      const a = pts[n - 1], gl = new THREE.Line(new THREE.BufferGeometry().setFromPoints([v3(a), v3(h)]), mGhostMat);
+      gl.computeLineDistances(); gl.renderOrder = 20; gMeasure.add(gl);
+      const d = geoDist(a, h); addLabel((a.x + h.x) / 2, (a.z + h.z) / 2, fmtM(d));
+      if (!M.closed) total += d;
+    }
+  }
+  // Resumen
+  let out = '';
+  if (M.closed) {
+    const area = geoArea(pts);
+    const cx = pts.reduce((s, p) => s + p.x, 0) / n, cz = pts.reduce((s, p) => s + p.z, 0) / n;
+    addLabel(cx, cz, fmtA(area), 'area');
+    out = `${M.lot ? 'Lote · ' + n + ' lados · ' : ''}Perímetro <b>${fmtM(total)}</b> · Área <b>${fmtA(area)}</b>`;
+  } else if (n || h) {
+    out = n ? `Longitud <b>${fmtM(total)}</b>${n >= 3 ? ' · doble clic / Enter cierra el área' : ''}` : 'Haz clic para poner el primer punto';
+  } else if (M.active) out = 'Clic: punto · Doble clic: cerrar área · Esc: salir';
+  $('measure-out').innerHTML = out;
+  $('btn-measure-undo').style.display = n ? '' : 'none';
+  $('btn-measure-clear').style.display = n ? '' : 'none';
+  updateMeasureLabels();
+}
+const _pv = new THREE.Vector3();
+function updateMeasureLabels() {
+  if (!M.labels.length) return;
+  const w = canvas.clientWidth, hh = canvas.clientHeight;
+  for (const L of M.labels) {
+    _pv.copy(L.v).project(camera);
+    const vis = _pv.z < 1 && Math.abs(_pv.x) < 1.1 && Math.abs(_pv.y) < 1.1;
+    L.el.style.display = vis ? '' : 'none';
+    if (vis) { L.el.style.left = ((_pv.x + 1) / 2 * w) + 'px'; L.el.style.top = ((1 - _pv.y) / 2 * hh) + 'px'; }
+  }
+}
+function setMeasureActive(on) {
+  M.active = on; M.hover = null;
+  $('btn-measure').classList.toggle('on', on);
+  $('center').classList.toggle('measuring', on);
+  if (on) toast('Medidor: clic para poner puntos (se imanta a las esquinas de los lotes). Doble clic cierra el área.', '');
+  drawMeasure();
+}
+// Acota el lote seleccionado: une los micro-segmentos del catastro en lados reales
+function measureSelectedLot() {
+  const sp = state.selectedParcel;
+  if (!sp || !sp.ring || sp.ring.length < 3) { toast('Primero selecciona un lote (búscalo o haz clic en él)', 'err'); return; }
+  let pts = ringToLocal(sp.ring);
+  if (pts.length > 1 && Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z) < 0.01) pts.pop();
+  // Quita vértices casi colineales (giro < 4°) o de tramos de pocos centímetros
+  let changed = true;
+  while (changed && pts.length > 3) {
+    changed = false;
+    for (let i = 0; i < pts.length && pts.length > 3; i++) {
+      const a = pts[(i - 1 + pts.length) % pts.length], b = pts[i], c = pts[(i + 1) % pts.length];
+      const ux = b.x - a.x, uz = b.z - a.z, vx = c.x - b.x, vz = c.z - b.z;
+      const lu = Math.hypot(ux, uz), lv = Math.hypot(vx, vz);
+      const turn = (lu && lv) ? Math.acos(Math.max(-1, Math.min(1, (ux * vx + uz * vz) / (lu * lv)))) / DEG : 0;
+      // desvío de b respecto a la cuerda a–c (en metros locales)
+      const cx = c.x - a.x, cz = c.z - a.z, lc = Math.hypot(cx, cz);
+      const dev = lc ? Math.abs(cx * (b.z - a.z) - cz * (b.x - a.x)) / lc : 0;
+      if (turn < 4 || dev < 0.25 || lu < 0.15 || lv < 0.15) { pts.splice(i, 1); changed = true; i--; }
+    }
+  }
+  M.pts = pts.map(p => ({ x: p.x, z: p.z })); M.closed = true; M.lot = true; M.hover = null;
+  drawMeasure();
+  const c = latLonToLocal(sp.centroid.lat, sp.centroid.lon);
+  controls.target.set(c.x, 0, c.z);
+  const ext = Math.max(...M.pts.map(p => Math.hypot(p.x - c.x, p.z - c.z)), 20);
+  const fit = ext * 1.35 / (Math.tan(camera.fov * DEG / 2) * Math.min(camera.aspect, 1));
+  camera.position.set(c.x + 0.01, fit, c.z + fit * 0.18);
+}
+$('btn-measure').onclick = () => setMeasureActive(!M.active);
+$('btn-measure-lot').onclick = measureSelectedLot;
+$('btn-measure-undo').onclick = undoMeasure;
+$('btn-measure-clear').onclick = clearMeasure;
+canvas.addEventListener('dblclick', (e) => { if (M.active) { e.preventDefault(); closeMeasure(); } });
+canvas.addEventListener('mouseleave', () => { if (M.hover) { M.hover = null; drawMeasure(); } });
+window.addEventListener('keydown', (e) => {
+  const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+  if (e.key === 'm' || e.key === 'M') { setMeasureActive(!M.active); return; }
+  if (!M.active && !M.pts.length) return;
+  if (e.key === 'Escape') { if (M.pts.length && !M.closed && !M.lot) clearMeasure(); else setMeasureActive(false); }
+  else if (e.key === 'Enter') closeMeasure();
+  else if (e.key === 'Backspace') { e.preventDefault(); undoMeasure(); }
 });
 
 // ===================== EVENTS =====================
@@ -1583,6 +1792,7 @@ function animate(t) {
   const focal = state.projects.find(p => p.id === state.focalId);
   if (focal && focal.sphere) { const s = 1 + Math.sin(t * 0.003) * 0.1; focal.sphere.scale.set(s, s, s); }
   controls.update();
+  updateMeasureLabels();
   renderer.render(scene, camera);
 }
 function resize() {
